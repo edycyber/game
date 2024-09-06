@@ -32,37 +32,38 @@ let livesText;
 const game = new Phaser.Game(config);
 
 function preload() {
-    // Load assets
-    this.load.image('background', 'https://i.imgur.com/Wl11xgu.png');
-    this.load.image('player', 'https://i.imgur.com/OWks14P.png');
-    this.load.image('bullet', 'https://i.imgur.com/ZOAD2F7.png');
-    this.load.image('enemy', 'https://i.imgur.com/LwEwLZJ.png');
+    // No need to load images, using graphics for basic shapes.
 }
 
 function create() {
-    // Add background
-    this.add.image(400, 300, 'background');
+    // Add background color
+    this.cameras.main.setBackgroundColor('#000000');
 
-    // Create player sprite
-    player = this.physics.add.sprite(400, 500, 'player');
-    player.setCollideWorldBounds(true);
+    // Create player sprite using graphics
+    player = this.add.rectangle(400, 500, 50, 50, 0x00ff00);
+    this.physics.add.existing(player);
+    player.body.setCollideWorldBounds(true);
 
     // Create bullet group
     bullets = this.physics.add.group({
         defaultKey: 'bullet',
-        maxSize: 10
+        maxSize: 10,
+        classType: Phaser.GameObjects.Rectangle
     });
 
     // Create enemy group
     enemies = this.physics.add.group({
         key: 'enemy',
         repeat: 7,
+        classType: Phaser.GameObjects.Rectangle,
         setXY: { x: 12, y: 0, stepX: 100 }
     });
 
-    // Move enemies down periodically
+    // Create enemies using graphics
     enemies.children.iterate(function (enemy) {
-        enemy.setVelocityY(100);
+        enemy.setSize(40, 40);
+        enemy.fillStyle(0xff0000);
+        enemy.body.setVelocityY(100);
     });
 
     // Create cursor input
@@ -82,30 +83,27 @@ function create() {
 function update(time) {
     // Player movement
     if (cursors.left.isDown) {
-        player.setVelocityX(-300);
+        player.body.setVelocityX(-300);
     } else if (cursors.right.isDown) {
-        player.setVelocityX(300);
+        player.body.setVelocityX(300);
     } else {
-        player.setVelocityX(0);
+        player.body.setVelocityX(0);
     }
 
     // Shoot bullets
     if (cursors.space.isDown && time > lastFired) {
-        const bullet = bullets.get(player.x, player.y - 20);
-        if (bullet) {
-            bullet.setActive(true);
-            bullet.setVisible(true);
-            bullet.setVelocityY(-500);
-            lastFired = time + 300;
-        }
+        const bullet = bullets.create(player.x, player.y - 20, 'bullet');
+        bullet.setSize(10, 20);
+        bullet.fillStyle(0xffffff);
+        this.physics.world.enable(bullet);
+        bullet.body.setVelocityY(-500);
+        lastFired = time + 300;
     }
 
     // Reuse bullets when off-screen
     bullets.children.each(function (bullet) {
         if (bullet.y < 0) {
-            bullets.killAndHide(bullet);
-            bullet.setActive(false);
-            bullet.setVisible(false);
+            bullet.destroy();
         }
     });
 
@@ -114,13 +112,12 @@ function update(time) {
         if (enemy.y > 600) {
             enemy.y = 0;
             enemy.x = Phaser.Math.Between(50, 750);
-            enemy.setVelocityY(100 + Math.random() * 100); // Increase speed over time
+            enemy.body.setVelocityY(100 + Math.random() * 100); // Increase speed over time
         }
     });
 }
 
 function destroyEnemy(bullet, enemy) {
-    bullet.setActive(false).setVisible(false);
     bullet.destroy();
     enemy.destroy();
 
@@ -136,8 +133,7 @@ function loseLife(player, enemy) {
 
     if (lives <= 0) {
         this.physics.pause();
-        player.setTint(0xff0000);
+        player.fillColor = 0xff0000;
         livesText.setText('Game Over');
     }
 }
-
